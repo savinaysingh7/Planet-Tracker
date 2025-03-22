@@ -4,15 +4,13 @@ from datetime import datetime
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.animation import FuncAnimation
 
-def plot_planetary_positions(positions, distances, data_dict, plot_3d=False, animate=False, speed=100):
+def plot_planetary_positions(positions, distances, data_dict, plot_3d=False, animate=False):
     """Create a polar or 3D plot of planetary positions, with optional animation."""
     fig, ax = plt.subplots(figsize=(12, 10), subplot_kw={'projection': 'polar'})
     colors = plt.cm.tab10(np.linspace(0, 1, len(positions)))
 
-    # Initialize scatter points
     scatters = {}
     for planet, pos in positions.items():
-        # Handle both 2-tuple (lon, lat) and 3-tuple (lon, lat, dist)
         lon, lat = pos[0], pos[1]
         theta = np.deg2rad(lon)
         r = abs(lat) + 90
@@ -33,10 +31,9 @@ def plot_planetary_positions(positions, distances, data_dict, plot_3d=False, ani
 
     if animate:
         time_positions = {planet: data_dict[planet]['time_positions'] for planet in positions}
-
         def update(frame):
             for planet, scat in scatters.items():
-                lon, lat, _ = time_positions[planet][frame]  # 3-tuple expected here
+                lon, lat, _ = time_positions[planet][frame]
                 theta = np.deg2rad(lon)
                 r = abs(lat) + 90
                 scat.set_offsets([theta, r])
@@ -44,7 +41,7 @@ def plot_planetary_positions(positions, distances, data_dict, plot_3d=False, ani
             return list(scatters.values())
 
         ani = FuncAnimation(fig, update, frames=len(time_positions[next(iter(positions))]), 
-                           interval=speed, blit=True)
+                           interval=100, blit=True)
     else:
         ax.set_title(f"Planetary Positions - {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}", 
                      pad=20, fontsize=14)
