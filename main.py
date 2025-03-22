@@ -35,8 +35,8 @@ def run_planet_tracker():
             start_date = Time.now()
             for planet in active_planets:
                 time_positions = get_positions_over_time(planet, start_date)
-                positions[planet] = time_positions[0]  # Initial position
-                distances[planet] = time_positions[0][2]  # Initial distance
+                positions[planet] = (time_positions[0][0], time_positions[0][1])  # lon, lat
+                distances[planet] = time_positions[0][2]  # dist
                 data_dict[planet] = data_dict[planet] or {}
                 data_dict[planet]['time_positions'] = time_positions
         else:

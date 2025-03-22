@@ -15,11 +15,12 @@ def get_heliographic_position(planet, time=None):
         return 0, 0, 0
 
 def get_positions_over_time(planet, start_date, days=30, steps=30):
+    """Generate positions for a planet over a time period, including dates."""
     start = Time(start_date)
     time_offsets = np.linspace(0, days, steps)  # Days as floats
     times = start + (time_offsets * 86400) * u.s  # Explicitly use seconds unit
     positions = []
     for t in times:
         lon, lat, dist = get_heliographic_position(planet, t)
-        positions.append((lon, lat, dist))
+        positions.append((lon, lat, dist, t.iso.split()[0]))  # Add YYYY-MM-DD
     return positions
