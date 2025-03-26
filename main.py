@@ -44,18 +44,31 @@ def run_planet_tracker():
     }
     current_theme = "dark"
 
+    # Define a custom style for the right inner frame
+    style.configure("RightInner.TFrame", background=themes[current_theme]["bg"])
+
     def apply_theme(theme):
         nonlocal current_theme
         current_theme = theme
         t = themes[theme]
+        # Update styles for ttk widgets
         style.configure("TFrame", background=t["bg"], relief="raised")
         style.configure("TLabel", background=t["bg"], foreground=t["fg"], font=("Arial", 12))
         style.configure("TCheckbutton", background=t["bg"], foreground=t["fg"])
         style.configure("TButton", background=t["bg"], foreground=t["fg"])
+        # Update the custom style for the right inner frame
+        style.configure("RightInner.TFrame", background=t["bg"])
+        # Update root and other tk widgets
         root.configure(bg=t["root_bg"])
         content_frame.configure(bg=t["root_bg"])
         title_label.configure(bg=t["root_bg"], fg=t["fg"])
         preview_frame.configure(bg=t["root_bg"])
+        # Update the canvas background (tk.Canvas supports bg directly)
+        right_canvas.configure(bg=t["bg"])
+        # Update styles for all ttk widgets in the right inner frame
+        for widget in right_inner_frame.winfo_children():
+            if isinstance(widget, (ttk.Label, ttk.Checkbutton, ttk.Button, ttk.Frame)):
+                widget.configure(style=widget.winfo_class())
         update_preview()
 
     content_frame = tk.Frame(root, bg=themes[current_theme]["root_bg"])
@@ -72,6 +85,7 @@ def run_planet_tracker():
                            fg=themes[current_theme]["fg"])
     title_label.grid(row=0, column=0, columnspan=3, pady=20, sticky="ew")
 
+    # Left panel (planet selection)
     left_panel = ttk.Frame(content_frame, style="TFrame")
     left_panel.grid(row=1, column=0, sticky="nsew", padx=20, pady=20)
     ttk.Label(left_panel, text="Selected Planets", font=("Arial", 18, "bold")).pack(pady=15)
@@ -90,97 +104,118 @@ def run_planet_tracker():
                 update_preview()
         ttk.Button(frame, text="Color", command=set_color).pack(side="left")
 
+    # Right panel with scrollbar
     right_panel = ttk.Frame(content_frame, style="TFrame")
     right_panel.grid(row=1, column=2, sticky="nsew", padx=20, pady=20)
-    ttk.Label(right_panel, text="Controls", font=("Arial", 14, "bold")).pack(pady=10)
+
+    # Create a Canvas and Scrollbar for the right panel
+    right_canvas = tk.Canvas(right_panel, bg=themes[current_theme]["bg"], highlightthickness=0)
+    scrollbar = ttk.Scrollbar(right_panel, orient="vertical", command=right_canvas.yview)
+    right_inner_frame = ttk.Frame(right_canvas, style="RightInner.TFrame")
+
+    # Configure the canvas to scroll with the inner frame
+    right_inner_frame.bind(
+        "<Configure>",
+        lambda e: right_canvas.configure(scrollregion=right_canvas.bbox("all"))
+    )
+    right_canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Pack the canvas and scrollbar
+    scrollbar.pack(side="right", fill="y")
+    right_canvas.pack(side="left", fill="both", expand=True)
+    right_canvas.create_window((0, 0), window=right_inner_frame, anchor="nw")
+
+    # Add widgets to the inner frame
+    ttk.Label(right_inner_frame, text="Controls", font=("Arial", 14, "bold")).pack(pady=10)
 
     # Time slider
-    ttk.Label(right_panel, text="Time Navigation", font=("Arial", 14, "bold")).pack(pady=5)
+    ttk.Label(right_inner_frame, text="Time Navigation", font=("Arial", 14, "bold")).pack(pady=5)
     time_var = tk.DoubleVar(value=ts.now().tt)
-    time_slider = ttk.Scale(right_panel, from_=ts.from_datetime(EPHEMERIS_START).tt,
+    time_slider = ttk.Scale(right_inner_frame, from_=ts.from_datetime(EPHEMERIS_START).tt,
                             to_=ts.from_datetime(EPHEMERIS_END).tt, variable=time_var,
                             orient=tk.HORIZONTAL, length=300)
     time_slider.pack(pady=5)
     create_tooltip(time_slider, "Slide to navigate time\nRanges from 1899 to 2053")
     time_display = tk.StringVar(value=ts.now().utc_strftime('%Y-%m-%d %H:%M UTC'))
-    ttk.Label(right_panel, textvariable=time_display, font=("Arial", 10)).pack(pady=5)
+    ttk.Label(right_inner_frame, textvariable=time_display, font=("Arial", 10)).pack(pady=5)
 
-    ttk.Separator(right_panel, orient="horizontal").pack(fill="x", pady=10)
+    ttk.Separator(right_inner_frame, orient="horizontal").pack(fill="x", pady=10)
 
     animate_var = tk.BooleanVar(value=False)
     real_time_var = tk.BooleanVar(value=False)
-    animate_cb = ttk.Checkbutton(right_panel, text="Engage Warp Animation", variable=animate_var)
+    animate_cb = ttk.Checkbutton(right_inner_frame, text="Engage Warp Animation", variable=animate_var)
     animate_cb.pack(pady=5)
     create_tooltip(animate_cb, "Start/stop animation\nMoves planets along their orbits over time.")
-    ttk.Checkbutton(right_panel, text="Real-Time Mode", variable=real_time_var).pack(pady=5)
+    ttk.Checkbutton(right_inner_frame, text="Real-Time Mode", variable=real_time_var).pack(pady=5)
     create_tooltip(animate_cb, "Toggle real-time mode\nShows current positions based on UTC time.")
-    ttk.Label(right_panel, text="Warp Speed (ms):").pack()
+    ttk.Label(right_inner_frame, text="Warp Speed (ms):").pack()
     speed_var = tk.DoubleVar(value=100)
-    speed_slider = ttk.Scale(right_panel, from_=20, to=300, orient=tk.HORIZONTAL,
+    speed_slider = ttk.Scale(right_inner_frame, from_=20, to=300, orient=tk.HORIZONTAL,
                              variable=speed_var, length=200)
     speed_slider.pack(pady=5)
     create_tooltip(speed_slider, "Adjust animation speed\nLower values = faster updates (ms per frame).")
-    ttk.Separator(right_panel, orient="horizontal").pack(fill="x", pady=10)
+    ttk.Separator(right_inner_frame, orient="horizontal").pack(fill="x", pady=10)
 
-    ttk.Label(right_panel, text="Custom Orbit Range", font=("Arial", 14, "bold")).pack(pady=5)
+    ttk.Label(right_inner_frame, text="Custom Orbit Range", font=("Arial", 14, "bold")).pack(pady=5)
     orbit_start_var = tk.StringVar(value="2025-08-15")
-    ttk.Label(right_panel, text="Start Date (YYYY-MM-DD):").pack()
-    orbit_start_entry = ttk.Entry(right_panel, textvariable=orbit_start_var, width=15)
+    ttk.Label(right_inner_frame, text="Start Date (YYYY-MM-DD):").pack()
+    orbit_start_entry = ttk.Entry(right_inner_frame, textvariable=orbit_start_var, width=15)
     orbit_start_entry.pack(pady=5)
     orbit_end_var = tk.StringVar(value="2026-08-15")
-    ttk.Label(right_panel, text="End Date (YYYY-MM-DD):").pack()
-    orbit_end_entry = ttk.Entry(right_panel, textvariable=orbit_end_var, width=15)
+    ttk.Label(right_inner_frame, text="End Date (YYYY-MM-DD):").pack()
+    orbit_end_entry = ttk.Entry(right_inner_frame, textvariable=orbit_end_var, width=15)
     orbit_end_entry.pack(pady=5)
-    ttk.Separator(right_panel, orient="horizontal").pack(fill="x", pady=10)
+    ttk.Separator(right_inner_frame, orient="horizontal").pack(fill="x", pady=10)
 
-    ttk.Label(right_panel, text="Planet Size Zoom", font=("Arial", 14, "bold")).pack(pady=5)
+    ttk.Label(right_inner_frame, text="Planet Size Zoom", font=("Arial", 14, "bold")).pack(pady=5)
     zoom_var = tk.DoubleVar(value=1.0)
-    zoom_slider = ttk.Scale(right_panel, from_=0.5, to=2.0, orient=tk.HORIZONTAL,
+    zoom_slider = ttk.Scale(right_inner_frame, from_=0.5, to=2.0, orient=tk.HORIZONTAL,
                             variable=zoom_var, length=200)
     zoom_slider.pack(pady=5)
     create_tooltip(zoom_slider, "Adjust planet sizes\nScales the visual size of planets in the plot.")
-    ttk.Separator(right_panel, orient="horizontal").pack(fill="x", pady=10)
+    ttk.Separator(right_inner_frame, orient="horizontal").pack(fill="x", pady=10)
 
-    ttk.Label(right_panel, text="View Angle", font=("Arial", 14, "bold")).pack(pady=5)
+    ttk.Label(right_inner_frame, text="View Angle", font=("Arial", 14, "bold")).pack(pady=5)
     elev_var = tk.DoubleVar(value=20)
-    ttk.Label(right_panel, text="Elevation:").pack()
-    ttk.Scale(right_panel, from_=-90, to=90, variable=elev_var, orient=tk.HORIZONTAL).pack(pady=5)
+    ttk.Label(right_inner_frame, text="Elevation:").pack()
+    ttk.Scale(right_inner_frame, from_=-90, to=90, variable=elev_var, orient=tk.HORIZONTAL).pack(pady=5)
     azim_var = tk.DoubleVar(value=30)
-    ttk.Label(right_panel, text="Azimuth:").pack()
-    ttk.Scale(right_panel, from_=-180, to=180, variable=azim_var, orient=tk.HORIZONTAL).pack(pady=5)
-    ttk.Separator(right_panel, orient="horizontal").pack(fill="x", pady=10)
+    ttk.Label(right_inner_frame, text="Azimuth:").pack()
+    ttk.Scale(right_inner_frame, from_=-180, to=180, variable=azim_var, orient=tk.HORIZONTAL).pack(pady=5)
+    ttk.Separator(right_inner_frame, orient="horizontal").pack(fill="x", pady=10)
 
-    ttk.Label(right_panel, text="Theme", font=("Arial", 14, "bold")).pack(pady=5)
+    ttk.Label(right_inner_frame, text="Theme", font=("Arial", 14, "bold")).pack(pady=5)
     theme_var = tk.StringVar(value="dark")
-    theme_menu = ttk.OptionMenu(right_panel, theme_var, "dark", "dark", "light",
+    theme_menu = ttk.OptionMenu(right_inner_frame, theme_var, "dark", "dark", "light",
                                 command=lambda value: apply_theme(value))
     theme_menu.pack(pady=5)
     create_tooltip(theme_menu, "Switch themes\nChoose between dark and light UI styles.")
-    ttk.Separator(right_panel, orient="horizontal").pack(fill="x", pady=10)
+    ttk.Separator(right_inner_frame, orient="horizontal").pack(fill="x", pady=10)
 
-    update_btn = ttk.Button(right_panel, text="Update Plot", command=lambda: update_preview())
+    update_btn = ttk.Button(right_inner_frame, text="Update Plot", command=lambda: update_preview())
     update_btn.pack(pady=5)
-    export_plot_btn = ttk.Button(right_panel, text="Export Plot",
+    export_plot_btn = ttk.Button(right_inner_frame, text="Export Plot",
                                  command=lambda: export_plot(plot.fig))
     export_plot_btn.pack(pady=5)
     create_tooltip(export_plot_btn, "Save plot\nExports the current 3D view as an HTML file.")
-    export_data_btn = ttk.Button(right_panel, text="Export Orbit Data",
+    export_data_btn = ttk.Button(right_inner_frame, text="Export Orbit Data",
                                  command=lambda: export_orbit_data(orbit_positions_dict))
     export_data_btn.pack(pady=5)
     create_tooltip(export_data_btn, "Save orbit data\nExports planet positions to a CSV file.")
-    ttk.Button(right_panel, text="Save Settings", command=lambda: save_settings()).pack(pady=5)
-    ttk.Button(right_panel, text="Load Settings", command=lambda: load_settings()).pack(pady=5)
+    ttk.Button(right_inner_frame, text="Save Settings", command=lambda: save_settings()).pack(pady=5)
+    ttk.Button(right_inner_frame, text="Load Settings", command=lambda: load_settings()).pack(pady=5)
     status_var = tk.StringVar(value="Ready")
-    status_label = ttk.Label(right_panel, textvariable=status_var, font=("Arial", 12, "italic"))
+    status_label = ttk.Label(right_inner_frame, textvariable=status_var, font=("Arial", 12, "italic"))
     status_label.pack(pady=10)
 
-    info_frame = ttk.Frame(right_panel, style="TFrame")
+    info_frame = ttk.Frame(right_inner_frame, style="TFrame")
     info_frame.pack(pady=10, fill="x")
     ttk.Label(info_frame, text="Planet Info", font=("Arial", 14, "bold")).pack()
     info_var = tk.StringVar(value="Select a planet from the plot")
     info_label = ttk.Label(info_frame, textvariable=info_var, font=("Arial", 10), wraplength=200)
     info_label.pack(pady=5)
 
+    # Preview panel (center)
     preview_frame = tk.Frame(content_frame, bg=themes[current_theme]["root_bg"])
     preview_frame.grid(row=1, column=1, sticky="nsew", padx=20, pady=20)
     
@@ -336,6 +371,14 @@ def run_planet_tracker():
 
     # Bind slider to update preview
     time_slider.bind("<B1-Motion>", lambda e: update_preview(ts.tt(jd=time_var.get())))
+
+    # Enable mouse wheel scrolling for the canvas
+    def _on_mousewheel(event):
+        right_canvas.yview_scroll(-1 * (event.delta // 120), "units")
+
+    right_canvas.bind_all("<MouseWheel>", _on_mousewheel)  # For Windows
+    right_canvas.bind_all("<Button-4>", lambda e: right_canvas.yview_scroll(-1, "units"))  # For Linux (scroll up)
+    right_canvas.bind_all("<Button-5>", lambda e: right_canvas.yview_scroll(1, "units"))  # For Linux (scroll down)
 
     apply_theme("dark")
     update_preview()
