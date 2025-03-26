@@ -83,33 +83,33 @@ class PlanetPlot:
         # Define grid_size for axis ranges
         grid_size = max_r * 1.1
 
-        # Update layout with dynamic view and styling, explicitly removing 3D axes grid lines
+        # Update layout with dynamic view and styling, removing 3D axes grid lines
         self.fig.update_layout(
             scene=dict(
                 xaxis_title="X (AU)", yaxis_title="Y (AU)", zaxis_title="Z (AU)",
                 xaxis=dict(
                     range=[-grid_size, grid_size],
-                    showgrid=False,  # Disable grid lines
-                    showbackground=False,  # Disable background
-                    zeroline=False,  # Disable zero line
-                    showline=True,  # Keep axis line
-                    showticklabels=True  # Keep tick labels
+                    showgrid=False,
+                    showbackground=False,
+                    zeroline=False,
+                    showline=True,
+                    showticklabels=True
                 ),
                 yaxis=dict(
                     range=[-grid_size, grid_size],
-                    showgrid=False,  # Disable grid lines
-                    showbackground=False,  # Disable background
-                    zeroline=False,  # Disable zero line
-                    showline=True,  # Keep axis line
-                    showticklabels=True  # Keep tick labels
+                    showgrid=False,
+                    showbackground=False,
+                    zeroline=False,
+                    showline=True,
+                    showticklabels=True
                 ),
                 zaxis=dict(
                     range=[-grid_size, grid_size],
-                    showgrid=False,  # Disable grid lines
-                    showbackground=False,  # Disable background
-                    zeroline=False,  # Disable zero line
-                    showline=True,  # Keep axis line
-                    showticklabels=True  # Keep tick labels
+                    showgrid=False,
+                    showbackground=False,
+                    zeroline=False,
+                    showline=True,
+                    showticklabels=True
                 ),
                 camera=dict(eye=dict(
                     x=np.cos(np.radians(azim)) * 1.5,
@@ -120,18 +120,10 @@ class PlanetPlot:
             title=f"Planet Positions at {current_time.utc_strftime('%Y-%m-%d %H:%M UTC')}",
             legend=dict(x=0.85, y=0.95),
             margin=dict(l=0, r=0, t=50, b=0),
-            paper_bgcolor="#0a0a1a",  # Dark background for the entire plot
-            plot_bgcolor="#0a0a1a",  # Dark background for the plot area
+            paper_bgcolor="#0a0a1a",
+            plot_bgcolor="#0a0a1a",
             font=dict(color="#00ffea")
         )
-
-        # Add note for Moon scaling
-        if "Moon" in active_planets:
-            self.fig.add_trace(go.Scatter3d(
-                x=[0], y=[0], z=[0], mode='text',
-                text=["Note: Moon position scaled 1000x"], textposition="bottom center",
-                showlegend=True, name="Moon Note"
-            ))
 
         # Display in browser (Tkinter embedding to be added in next update)
         self.fig.show()

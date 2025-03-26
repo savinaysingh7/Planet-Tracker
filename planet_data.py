@@ -7,7 +7,6 @@ planet_dict = {
     "Mercury": {"color": "#B0C4DE", "radius": 2440},
     "Venus": {"color": "#F0F8FF", "radius": 6052},
     "Earth": {"color": "#00FF00", "radius": 6371},
-    "Moon": {"color": "#FFFFFF", "radius": 1737},
     "Mars": {"color": "#FF6347", "radius": 3390},
     "Jupiter": {"color": "#FF4500", "radius": 69911},
     "Saturn": {"color": "#FFD700", "radius": 58232},
@@ -51,8 +50,6 @@ class PlanetData:
         """Fetch data for all planets in parallel and return as a dictionary."""
         with ThreadPoolExecutor(max_workers=4) as executor:
             results = {planet.capitalize(): self.fetch_planet_data(planet) for planet in planets}
-        # Add Moon with placeholder data since API doesn't support it
-        results["Moon"] = {"mass": "7.342e22", "temperature": "250", "distance": "0.384", "orbital_period": "27.32"}
         return results
 
     def get_planet_info(self, planet_name):
