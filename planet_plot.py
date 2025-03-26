@@ -80,21 +80,37 @@ class PlanetPlot:
                 hoverinfo="text", hovertext=f"{name}<br>Click for info"
             ))
 
-        # Add ecliptic plane
+        # Define grid_size for axis ranges
         grid_size = max_r * 1.1
-        xx, yy = np.meshgrid(np.linspace(-grid_size, grid_size, 10), np.linspace(-grid_size, grid_size, 10))
-        zz = np.zeros_like(xx)
-        self.fig.add_trace(go.Surface(
-            x=xx, y=yy, z=zz, colorscale=[[0, 'gray'], [1, 'gray']], opacity=0.1, showscale=False
-        ))
 
-        # Update layout with dynamic view and styling
+        # Update layout with dynamic view and styling, explicitly removing 3D axes grid lines
         self.fig.update_layout(
             scene=dict(
                 xaxis_title="X (AU)", yaxis_title="Y (AU)", zaxis_title="Z (AU)",
-                xaxis=dict(range=[-grid_size, grid_size]),
-                yaxis=dict(range=[-grid_size, grid_size]),
-                zaxis=dict(range=[-grid_size, grid_size]),
+                xaxis=dict(
+                    range=[-grid_size, grid_size],
+                    showgrid=False,  # Disable grid lines
+                    showbackground=False,  # Disable background
+                    zeroline=False,  # Disable zero line
+                    showline=True,  # Keep axis line
+                    showticklabels=True  # Keep tick labels
+                ),
+                yaxis=dict(
+                    range=[-grid_size, grid_size],
+                    showgrid=False,  # Disable grid lines
+                    showbackground=False,  # Disable background
+                    zeroline=False,  # Disable zero line
+                    showline=True,  # Keep axis line
+                    showticklabels=True  # Keep tick labels
+                ),
+                zaxis=dict(
+                    range=[-grid_size, grid_size],
+                    showgrid=False,  # Disable grid lines
+                    showbackground=False,  # Disable background
+                    zeroline=False,  # Disable zero line
+                    showline=True,  # Keep axis line
+                    showticklabels=True  # Keep tick labels
+                ),
                 camera=dict(eye=dict(
                     x=np.cos(np.radians(azim)) * 1.5,
                     y=np.sin(np.radians(azim)) * 1.5,
@@ -104,7 +120,8 @@ class PlanetPlot:
             title=f"Planet Positions at {current_time.utc_strftime('%Y-%m-%d %H:%M UTC')}",
             legend=dict(x=0.85, y=0.95),
             margin=dict(l=0, r=0, t=50, b=0),
-            paper_bgcolor="#0a0a1a", plot_bgcolor="#0a0a1a",
+            paper_bgcolor="#0a0a1a",  # Dark background for the entire plot
+            plot_bgcolor="#0a0a1a",  # Dark background for the plot area
             font=dict(color="#00ffea")
         )
 
