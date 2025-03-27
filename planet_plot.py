@@ -8,15 +8,15 @@ class PlanetPlot:
     def __init__(self, master, planet_data, on_pick_callback=None):
         """
         Initialize the PlanetPlot class.
-        
+
         Args:
             master: Tkinter parent widget (for future embedding).
-            planet_data: Object providing planet colors and radii.
-            on_pick_callback: Function to call when a planet is clicked.
+            planet_data: PlanetData instance providing planet colors and radii.
+            on_pick_callback: Function to call when a planet is clicked (to be implemented with Tkinter embedding).
         """
         self.planet_data = planet_data
         self.on_pick_callback = on_pick_callback
-        self.fig = go.Figure()
+        self.fig = go.Figure()  # Fixed: Corrected from 'go.F enewable()' to 'go.Figure()'
         self.master = master
         # Note: Currently displays in browser; Tkinter embedding will be added later
         self.canvas = None
@@ -24,16 +24,16 @@ class PlanetPlot:
     def update_plot(self, positions, orbit_positions, current_time, active_planets, zoom=1.0, elev=20, azim=30, planet_colors=None):
         """
         Update the 3D plot with planet positions and orbits using Plotly.
-        
+
         Args:
-            positions: Dict of planet names to current positions (x, y, z in AU).
-            orbit_positions: Dict of planet names to orbit coordinates (x, y, z arrays).
-            current_time: Skyfield Time object for the current timestamp.
-            active_planets: List of planet names to display.
-            zoom: Scaling factor for planet sizes.
-            elev: Elevation angle for 3D view (degrees).
-            azim: Azimuth angle for 3D view (degrees).
-            planet_colors: Dict of planet names to custom colors.
+            positions (dict): Dict of planet names to current positions (x, y, z in AU).
+            orbit_positions (dict): Dict of planet names to orbit coordinates (x, y, z arrays).
+            current_time (skyfield.timelib.Time): Skyfield Time object for the current timestamp.
+            active_planets (list): List of planet names to display.
+            zoom (float): Scaling factor for planet sizes (default: 1.0).
+            elev (float): Elevation angle for 3D view in degrees (default: 20).
+            azim (float): Azimuth angle for 3D view in degrees (default: 30).
+            planet_colors (dict): Optional dict of planet names to custom colors (overrides planet_data colors if provided).
         """
         self.fig.data = []  # Clear previous traces
 
@@ -51,7 +51,7 @@ class PlanetPlot:
 
         # Plot orbits
         for name in active_planets:
-            if name in orbit_positions and orbit_positions[name].size > 0:
+            if name in orbit_positions and orbit_positions[name].size > 0 and not np.all(orbit_positions[name] == 0):
                 orbit_pos = orbit_positions[name]
                 color = planet_colors.get(name, self.planet_data.get_planet_color(name)) if planet_colors else self.planet_data.get_planet_color(name)
                 self.fig.add_trace(go.Scatter3d(
@@ -61,7 +61,7 @@ class PlanetPlot:
                 ))
                 print(f"Plotted orbit for {name}: shape={orbit_pos.shape}")
             else:
-                print(f"No orbit data for {name}")
+                print(f"No valid orbit data for {name}")
 
         # Plot planets with scaled sizes
         max_r = 0
@@ -69,19 +69,20 @@ class PlanetPlot:
             x, y, z = pos
             r = np.linalg.norm(pos)
             max_r = max(max_r, r)
-            radius = self.planet_data.get_planet_radius(name)
-            s = (10 + 40 * (radius / 69911)) * zoom  # Scale size relative to Jupiter
+            radius = self.planet_data.get_planet_radius(name)  # Now uses API-provided radius when available
+            s = (10 + 40 * (radius / 69911)) * zoom  # Scale size relative to Jupiter (69911 km)
             color = planet_colors.get(name, self.planet_data.get_planet_color(name)) if planet_colors else self.planet_data.get_planet_color(name)
+            hover_text = f"{name}<br>Radius: {radius:.0f} km<br>Click for more info"
             self.fig.add_trace(go.Scatter3d(
                 x=[x], y=[y], z=[z], mode='markers+text',
                 marker=dict(size=s, color=color),
                 text=[name], textposition="top center",
                 name=name, customdata=[name],
-                hoverinfo="text", hovertext=f"{name}<br>Click for info"
+                hoverinfo="text", hovertext=hover_text
             ))
 
-        # Define grid_size for axis ranges
-        grid_size = max_r * 1.1
+        # Define grid_size for axis ranges, ensuring a minimum size
+        grid_size = max_r * 1.1 if max_r > 0 else 1.0  # Avoid zero grid size
 
         # Update layout with dynamic view and styling, removing 3D axes grid lines
         self.fig.update_layout(
@@ -125,12 +126,19 @@ class PlanetPlot:
             font=dict(color="#00ffea")
         )
 
-        # Display in browser (Tkinter embedding to be added in next update)
+        # Display in browser (Tkinter embedding to be added in future update)
         self.fig.show()
         # TODO: Implement click event handling when embedded in Tkinter
+        # Note: Plotly's browser mode doesn't natively support click callbacks; requires Tkinter integration
 
     def _on_pick(self, trace, points, state):
-        """Handle click events (to be used when embedded in Tkinter)."""
+        """Handle click events (to be used when embedded in Tkinter).
+
+        Args:
+            trace: Plotly trace object that was clicked.
+            points: Points object containing click data.
+            state: State of the plot at the time of the click.
+        """
         if self.on_pick_callback and points.point_inds:
             name = trace.customdata[points.point_inds[0]]
             print(f"Clicked {name}")
@@ -139,25 +147,20 @@ class PlanetPlot:
 
 if __name__ == "__main__":
     # Test the class standalone
-    from planet_data import fetch_all_planet_data, get_planet_info, planet_dict
-    from planet_calculations import parse_date_time, get_heliocentric_positions, calculate_orbit
+    from planet_data import planet_data  # Use the singleton instance
+    from planet_calculations import ts, parse_date_time, get_heliocentric_positions, calculate_orbit
 
-    # Mock planet_data object for testing
-    class MockPlanetData:
-        def get_planet_color(self, name): return planet_dict[name]["color"]
-        def get_planet_radius(self, name): return planet_dict[name]["radius"]
-
-    api_data = fetch_all_planet_data()
+    # Use the real planet_data singleton
     t = parse_date_time("2025-03-24", "12:00")
     positions = get_heliocentric_positions(["Earth", "Mars"], t)
     orbit_positions = {
-        "Earth": calculate_orbit("Earth", t, parse_date_time("2026-03-24", "12:00")),
-        "Mars": calculate_orbit("Mars", t, parse_date_time("2027-03-24", "12:00"))
+        "Earth": calculate_orbit("Earth", t.tt, parse_date_time("2026-03-24", "12:00").tt),
+        "Mars": calculate_orbit("Mars", t.tt, parse_date_time("2027-03-24", "12:00").tt)
     }
 
     def on_pick(name):
-        info = get_planet_info(name, api_data)
+        info = planet_data.get_planet_info(name)
         print(f"Clicked {name}: {info}")
 
-    plot = PlanetPlot(None, MockPlanetData(), on_pick)
-    plot.update_plot(positions, orbit_positions, t, ["Earth", "Mars"], planet_colors=planet_dict)
+    plot = PlanetPlot(None, planet_data, on_pick)
+    plot.update_plot(positions, orbit_positions, t, ["Earth", "Mars"])

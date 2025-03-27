@@ -1,11 +1,9 @@
 from skyfield.api import load
 from datetime import datetime, timedelta, UTC
 import numpy as np
-import requests
-from concurrent.futures import ThreadPoolExecutor
-import time
 from skyfield.elementslib import osculating_elements_of
-from functools import lru_cache  # Added for caching
+from skyfield.searchlib import find_discrete
+from functools import lru_cache
 
 # Load Skyfield data
 planets = load('de421.bsp')
@@ -13,55 +11,39 @@ ts = load.timescale()
 sun = planets['sun']
 earth = planets['earth']
 
-# Planet dictionary with Skyfield bodies, colors, and radii
+# Planet dictionary with Skyfield bodies (colors and radii sourced from planet_data.py)
 planet_dict = {
-    "Mercury": {"body": planets['mercury'], "color": "#B0C4DE", "radius": 2440},
-    "Venus": {"body": planets['venus'], "color": "#F0F8FF", "radius": 6052},
-    "Earth": {"body": planets['earth'], "color": "#00FF00", "radius": 6371},
-    "Moon": {"body": planets['moon'], "color": "#FFFFFF", "radius": 1737},
-    "Mars": {"body": planets['mars barycenter'], "color": "#FF6347", "radius": 3390},
-    "Jupiter": {"body": planets['jupiter barycenter'], "color": "#FF4500", "radius": 69911},
-    "Saturn": {"body": planets['saturn barycenter'], "color": "#FFD700", "radius": 58232},
-    "Uranus": {"body": planets['uranus barycenter'], "color": "#00CED1", "radius": 25362},
-    "Neptune": {"body": planets['neptune barycenter'], "color": "#0000FF", "radius": 24622}
+    "Mercury": {"body": planets['mercury']},
+    "Venus": {"body": planets['venus']},
+    "Earth": {"body": planets['earth']},
+    "Moon": {"body": planets['moon']},
+    "Mars": {"body": planets['mars barycenter']},
+    "Jupiter": {"body": planets['jupiter barycenter']},
+    "Saturn": {"body": planets['saturn barycenter']},
+    "Uranus": {"body": planets['uranus barycenter']},
+    "Neptune": {"body": planets['neptune barycenter']}
 }
 
 # Ephemeris bounds
 EPHEMERIS_START = datetime(1899, 7, 29, tzinfo=UTC)
 EPHEMERIS_END = datetime(2053, 10, 9, tzinfo=UTC)
 
-# API setup (kept for now, will transition to astroquery later)
-API_KEY = "e4DaIssgKChVTbypjUeacg==0bS11B9YahMDJUXG"
-BASE_URL = "https://api.api-ninjas.com/v1/planets"
-PLANETS = ["mercury", "venus", "earth", "mars", "jupiter", "saturn", "uranus", "neptune"]
-
 # Scaling factor for Moon's geocentric position
 MOON_SCALE_FACTOR = 1000
 
-def fetch_planet_data(planet_name, retries=3):
-    """Fetch planetary data from API Ninjas with retries."""
-    for attempt in range(retries):
-        try:
-            headers = {"X-Api-Key": API_KEY}
-            response = requests.get(f"{BASE_URL}?name={planet_name}", headers=headers, timeout=20)
-            response.raise_for_status()
-            data = response.json()
-            return data[0] if data else None
-        except requests.RequestException as e:
-            print(f"Attempt {attempt+1}/{retries} failed for {planet_name}: {e}")
-            if attempt < retries - 1:
-                time.sleep(2)
-    print(f"Failed to fetch data for {planet_name} after {retries} attempts")
-    return None
-
-def fetch_all_planet_data(planets=PLANETS):
-    """Fetch data for all planets in parallel."""
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        results = {planet.capitalize(): fetch_planet_data(planet) for planet in planets}
-    return results
-
 def parse_date_time(date_str, time_str):
-    """Parse date and time strings into a Skyfield time object."""
+    """Parse date and time strings into a Skyfield time object.
+
+    Args:
+        date_str (str): Date in 'YYYY-MM-DD' format.
+        time_str (str): Time in 'HH:MM' format.
+
+    Returns:
+        skyfield.timelib.Time: A Skyfield time object.
+
+    Raises:
+        ValueError: If date or time format is invalid or outside ephemeris range.
+    """
     try:
         date = datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
@@ -81,14 +63,16 @@ def parse_date_time(date_str, time_str):
 
 @lru_cache(maxsize=128)
 def calculate_orbit(planet_name, t_start_jd, t_end_jd, num_points=100):
-    """
-    Calculate orbit positions with caching using Julian Dates.
-    
+    """Calculate orbit positions with caching using Julian Dates.
+
     Args:
-        planet_name: Name of the planet.
-        t_start_jd: Start time in Julian Date.
-        t_end_jd: End time in Julian Date.
-        num_points: Number of points in the orbit.
+        planet_name (str): Name of the planet.
+        t_start_jd (float): Start time in Julian Date.
+        t_end_jd (float): End time in Julian Date.
+        num_points (int): Number of points in the orbit (default: 100).
+
+    Returns:
+        numpy.ndarray: Array of shape (3, num_points) with x, y, z positions in AU.
     """
     t_start = ts.tt(jd=t_start_jd)
     t_end = ts.tt(jd=min(t_end_jd, ts.from_datetime(EPHEMERIS_END).tt))
@@ -113,7 +97,15 @@ def calculate_orbit(planet_name, t_start_jd, t_end_jd, num_points=100):
     return result
 
 def get_heliocentric_positions(selected_planets, t):
-    """Calculate positions: heliocentric for planets, geocentric for Moon."""
+    """Calculate positions: heliocentric for planets, geocentric for Moon.
+
+    Args:
+        selected_planets (list): List of planet names to calculate positions for.
+        t (skyfield.timelib.Time): Time at which to calculate positions.
+
+    Returns:
+        dict: Dictionary mapping planet names to their positions (x, y, z) in AU.
+    """
     positions = {}
     for name in selected_planets:
         if name == "Moon":
@@ -125,7 +117,15 @@ def get_heliocentric_positions(selected_planets, t):
     return positions
 
 def get_orbital_elements(planet_name, t):
-    """Calculate orbital elements for a planet at a given time."""
+    """Calculate orbital elements for a planet at a given time.
+
+    Args:
+        planet_name (str): Name of the planet.
+        t (skyfield.timelib.Time): Time at which to calculate elements.
+
+    Returns:
+        dict: Dictionary with semi-major axis (AU) and eccentricity.
+    """
     if planet_name == "Moon":
         pos_vel = (planet_dict[planet_name]["body"] - earth).at(t)
     else:
@@ -137,7 +137,15 @@ def get_orbital_elements(planet_name, t):
     }
 
 def calculate_events(t, angle_threshold=1.0):
-    """Calculate opposition, inferior conjunction, and superior conjunction events."""
+    """Calculate opposition, inferior conjunction, and superior conjunction events.
+
+    Args:
+        t (skyfield.timelib.Time): Time at which to check for events.
+        angle_threshold (float): Angular threshold in degrees for event detection (default: 1.0).
+
+    Returns:
+        list: List of tuples (planet_name, event_type) for detected events.
+    """
     events = []
     earth_pos = (planet_dict["Earth"]["body"] - sun).at(t).position.au
     sun_pos = sun.at(t).position.au
@@ -170,11 +178,77 @@ def calculate_events(t, angle_threshold=1.0):
     
     return events
 
+def find_next_events(selected_planets, t_start, t_end, angle_threshold=1.0):
+    """Find upcoming astronomical events (oppositions and conjunctions) within a time range.
+
+    Args:
+        selected_planets (list): List of planet names to check for events.
+        t_start (skyfield.timelib.Time): Start time for the search.
+        t_end (skyfield.timelib.Time): End time for the search.
+        angle_threshold (float): Angular threshold in degrees for event detection (default: 1.0).
+
+    Returns:
+        list: List of tuples (planet_name, event_type, date_str) for upcoming events.
+    """
+    events = []
+    
+    for name in selected_planets:
+        if name in ["Earth", "Moon"]:
+            continue
+        
+        planet_body = planet_dict[name]["body"]
+        
+        def elongation_at(t):
+            """Calculate the elongation angle between the Sun and the planet as seen from Earth."""
+            e = earth.at(t)
+            s = sun.at(t)
+            p = planet_body.at(t)
+            earth_to_sun = (s - e).position.au
+            earth_to_planet = (p - e).position.au
+            cos_angle = np.dot(earth_to_planet, earth_to_sun) / (np.linalg.norm(earth_to_planet) * np.linalg.norm(earth_to_sun))
+            return np.degrees(np.arccos(np.clip(cos_angle, -1.0, 1.0)))
+        
+        elongation_at.step_days = 0.5  # Check every half day for precision
+        
+        if name in ["Mercury", "Venus"]:
+            # Inner planets: Look for conjunctions (elongation ~0° or ~180°)
+            times, elongations = find_discrete(t_start, t_end, elongation_at)
+            for t, elong in zip(times, elongations):
+                if abs(elong) < angle_threshold:
+                    # Inferior conjunction: Planet between Earth and Sun
+                    planet_dist = (planet_body - sun).at(t).distance().au
+                    earth_dist = (earth - sun).at(t).distance().au
+                    if planet_dist < earth_dist:
+                        events.append((name, "Inferior Conjunction", t.utc_strftime('%Y-%m-%d %H:%M UTC')))
+                elif abs(elong - 180) < angle_threshold:
+                    # Superior conjunction: Sun between Earth and Planet
+                    planet_dist = (planet_body - sun).at(t).distance().au
+                    earth_dist = (earth - sun).at(t).distance().au
+                    if planet_dist > earth_dist:
+                        events.append((name, "Superior Conjunction", t.utc_strftime('%Y-%m-%d %H:%M UTC')))
+        else:
+            # Outer planets: Look for oppositions (elongation ~180°)
+            times, elongations = find_discrete(t_start, t_end, elongation_at)
+            for t, elong in zip(times, elongations):
+                if abs(elong - 180) < angle_threshold:
+                    events.append((name, "Opposition", t.utc_strftime('%Y-%m-%d %H:%M UTC')))
+    
+    return sorted(events, key=lambda x: x[2])  # Sort by date
+
 if __name__ == "__main__":
+    # Test existing functionality
     t = parse_date_time("2025-03-24", "12:00")
     positions = get_heliocentric_positions(["Earth", "Mars"], t)
     print("Heliocentric Positions:", positions)
     orbit = calculate_orbit("Earth", t.tt, parse_date_time("2026-03-24", "12:00").tt)
     print("Earth Orbit Shape:", orbit.shape)
     events = calculate_events(t)
-    print("Events:", events)
+    print("Current Events:", events)
+    
+    # Test new upcoming events feature
+    t_start = ts.now()
+    t_end = ts.utc(t_start.utc_datetime().year + 1, t_start.utc_datetime().month, t_start.utc_datetime().day)
+    upcoming_events = find_next_events(["Mercury", "Venus", "Mars", "Jupiter"], t_start, t_end)
+    print("Upcoming Events:")
+    for event in upcoming_events:
+        print(f"{event[0]}: {event[1]} on {event[2]}")

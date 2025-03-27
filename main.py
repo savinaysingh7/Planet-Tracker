@@ -10,7 +10,7 @@ from planet_plot import PlanetPlot
 from planet_data import planet_data  # Import the singleton instance directly
 from planet_calculations import (ts, sun, EPHEMERIS_START, EPHEMERIS_END, parse_date_time,
                                  calculate_orbit, get_heliocentric_positions, get_orbital_elements,
-                                 planet_dict, calculate_events)
+                                 planet_dict, calculate_events, find_next_events)
 
 def create_tooltip(widget, text):
     """Create a tooltip for a widget."""
@@ -28,8 +28,7 @@ def create_tooltip(widget, text):
     widget.bind("<Leave>", hide)
 
 def run_planet_tracker():
-    global planet_api_data
-    planet_api_data = planet_data.fetch_all_planet_data()  # Use the instance method directly
+    # No need to fetch data here; planet_data singleton handles it on import
     
     root = tk.Tk()
     root.title("Planet Tracker: Galactic Nexus")
@@ -63,7 +62,7 @@ def run_planet_tracker():
         content_frame.configure(bg=t["root_bg"])
         title_label.configure(bg=t["root_bg"], fg=t["fg"])
         preview_frame.configure(bg=t["root_bg"])
-        # Update the canvas background (tk.Canvas supports bg directly)
+        # Update the canvas background
         right_canvas.configure(bg=t["bg"])
         # Update styles for all ttk widgets in the right inner frame
         for widget in right_inner_frame.winfo_children():
@@ -145,15 +144,15 @@ def run_planet_tracker():
     real_time_var = tk.BooleanVar(value=False)
     animate_cb = ttk.Checkbutton(right_inner_frame, text="Engage Warp Animation", variable=animate_var)
     animate_cb.pack(pady=5)
-    create_tooltip(animate_cb, "Start/stop animation\nMoves planets along their orbits over time.")
+    create_tooltip(animate_cb, "Start/stop animation\nMoves planets along their orbits over time.\nRefresh browser tab to see updates.")
     ttk.Checkbutton(right_inner_frame, text="Real-Time Mode", variable=real_time_var).pack(pady=5)
-    create_tooltip(animate_cb, "Toggle real-time mode\nShows current positions based on UTC time.")
+    create_tooltip(animate_cb, "Toggle real-time mode\nShows current positions based on UTC time.\nRefresh browser tab to see updates.")
     ttk.Label(right_inner_frame, text="Warp Speed (ms):").pack()
-    speed_var = tk.DoubleVar(value=100)
-    speed_slider = ttk.Scale(right_inner_frame, from_=20, to=300, orient=tk.HORIZONTAL,
+    speed_var = tk.DoubleVar(value=1000)  # Increased to 1000ms for manual refresh
+    speed_slider = ttk.Scale(right_inner_frame, from_=500, to=3000, orient=tk.HORIZONTAL,
                              variable=speed_var, length=200)
     speed_slider.pack(pady=5)
-    create_tooltip(speed_slider, "Adjust animation speed\nLower values = faster updates (ms per frame).")
+    create_tooltip(speed_slider, "Adjust animation speed\nHigher values = slower updates (ms per frame).\nAllows time to refresh browser tab.")
     ttk.Separator(right_inner_frame, orient="horizontal").pack(fill="x", pady=10)
 
     ttk.Label(right_inner_frame, text="Custom Orbit Range", font=("Arial", 14, "bold")).pack(pady=5)
@@ -202,9 +201,11 @@ def run_planet_tracker():
                                  command=lambda: export_orbit_data(orbit_positions_dict))
     export_data_btn.pack(pady=5)
     create_tooltip(export_data_btn, "Save orbit data\nExports planet positions to a CSV file.")
+    ttk.Button(right_inner_frame, text="Show Upcoming Events", command=lambda: show_upcoming_events()).pack(pady=5)
+    create_tooltip(export_data_btn, "Show upcoming events\nDisplays oppositions and conjunctions for the next year.")
     ttk.Button(right_inner_frame, text="Save Settings", command=lambda: save_settings()).pack(pady=5)
     ttk.Button(right_inner_frame, text="Load Settings", command=lambda: load_settings()).pack(pady=5)
-    status_var = tk.StringVar(value="Ready")
+    status_var = tk.StringVar(value="Ready (Plot in browser, refresh to update)")
     status_label = ttk.Label(right_inner_frame, textvariable=status_var, font=("Arial", 12, "italic"))
     status_label.pack(pady=10)
 
@@ -231,11 +232,18 @@ def run_planet_tracker():
         t = ts.tt(jd=time_var.get()) if not real_time_var.get() else ts.now()
         elements = get_orbital_elements(name, t)
         if info:
-            info_var.set(f"{name}\nMass: {info['mass']} kg\nTemp: {info['temperature']} K\n"
-                         f"Distance: {info['distance']} M km\nOrbit: {info['orbital_period']} days\n"
-                         f"Semi-Major Axis: {elements['semi_major_axis']:.2f} AU\nEcc: {elements['eccentricity']:.3f}")
+            info_var.set(f"{name}\n"
+                         f"Mass: {info['mass']}\n"
+                         f"Temp: {info['temperature']}\n"
+                         f"Distance: {info['distance']}\n"
+                         f"Orbit: {info['orbital_period']}\n"
+                         f"Radius: {info['radius']}\n"
+                         f"Density: {info['density']}\n"
+                         f"Gravity: {info['gravity']}\n"
+                         f"Semi-Major Axis: {elements['semi_major_axis']:.2f} AU\n"
+                         f"Ecc: {elements['eccentricity']:.3f}")
         else:
-            info_var.set(f"{name}\nNo API data available")
+            info_var.set(f"{name}\nNo data available")
         print(f"Updated info for {name}")
 
     def export_plot(fig):
@@ -287,6 +295,20 @@ def run_planet_tracker():
             azim_var.set(settings["azim"])
             update_preview()
             status_var.set(f"Settings loaded from {file_path}")
+
+    def show_upcoming_events():
+        active_planets = [p for p, v in selected_planets.items() if v.get()]
+        if not active_planets:
+            messagebox.showinfo("Upcoming Events", "No planets selected.")
+            return
+        t_start = ts.now()
+        t_end = ts.utc(t_start.utc_datetime().year + 1, t_start.utc_datetime().month, t_start.utc_datetime().day)
+        events = find_next_events(active_planets, t_start, t_end)
+        if events:
+            event_text = "\n".join([f"{p}: {e} on {d}" for p, e, d in events])
+            messagebox.showinfo("Upcoming Events", f"Events within the next year:\n\n{event_text}")
+        else:
+            messagebox.showinfo("Upcoming Events", "No events found in the next year.")
 
     def animate_loop():
         nonlocal animation_t
@@ -340,8 +362,8 @@ def run_planet_tracker():
         try:
             t_start_custom = parse_date_time(orbit_start_var.get(), "00:00")
             t_end_custom = parse_date_time(orbit_end_var.get(), "23:59")
-            if t_start_custom is None or t_end_custom is None:
-                raise ValueError("Invalid orbit range dates")
+            if t_start_custom is None or t_end_custom is None or t_start_custom.tt >= t_end_custom.tt:
+                raise ValueError("Invalid orbit range: Ensure start date is before end date")
         except ValueError as e:
             status_var.set(str(e))
             return
@@ -363,9 +385,9 @@ def run_planet_tracker():
         positions = get_heliocentric_positions(active_planets, t)
         events = calculate_events(t)
         if events:
-            status_var.set(f"Updated at {t.utc_strftime('%Y-%m-%d %H:%M UTC')}. Events: {[(p, e) for p, e in events]}")
+            status_var.set(f"Updated at {t.utc_strftime('%Y-%m-%d %H:%M UTC')}. Events: {[(p, e) for p, e in events]}. Refresh browser tab to see update.")
         else:
-            status_var.set(f"Updated at {t.utc_strftime('%Y-%m-%d %H:%M UTC')}. No events detected.")
+            status_var.set(f"Updated at {t.utc_strftime('%Y-%m-%d %H:%M UTC')}. No events detected. Refresh browser tab to see update.")
 
         plot.update_plot(positions, orbit_positions_dict, t, active_planets, zoom_var.get(), elev_var.get(), azim_var.get(), planet_colors)
 
