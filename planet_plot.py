@@ -2,6 +2,11 @@ import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime, UTC
 
+try:
+    from IPython.display import display
+except ImportError:
+    display = None
+
 class PlanetPlot:
     """Manages 3D plotting of planetary positions and orbits with Plotly."""
 
