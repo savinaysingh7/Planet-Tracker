@@ -3,5 +3,3 @@ matplotlib
 astropy
 sunpy
 numpy
-IPython
-pyreadline3
