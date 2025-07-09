@@ -326,7 +326,7 @@ class PlanetTrackerApp:
         global LLM_ENABLED # Allow modification of global flag
         groq_api_key = os.getenv("GROQ_API_KEY")
         # Provide a clear placeholder if no key is intended
-        hardcoded_default_key = "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" # Set to None explicitly, or replace "gsk_..." with your placeholder/actual default ONLY FOR LOCAL TESTING
+        hardcoded_default_key = "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" # Set to None explicitly, or replace "gsk_..." with your placeholder/actual default ONLY FOR LOCAL TESTING
 
         if not groq_api_key and hardcoded_default_key:
              groq_api_key = hardcoded_default_key
