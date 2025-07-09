@@ -1,5 +1,6 @@
-requests
-matplotlib
-astropy
-sunpy
-numpy
+numpy>=1.24.0
+skyfield>=1.45
+plotly>=5.18.0
+requests>=2.31.0
+tk  
+groq>=0.3.0
