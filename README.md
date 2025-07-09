@@ -1,183 +1,157 @@
-````markdown
-# Planet Tracker
+# 🌌 Planet Tracker: 3D Solar System Visualizer
 
-**Interactive 3D Solar System Visualization**
+**Planet Tracker** is a Python-based desktop application that simulates and visualizes planetary positions and orbits in the Solar System using real ephemeris data. Featuring an interactive GUI, 3D Plotly visualizations, AI-powered chat assistant, and educational tools, it’s designed for learners, astronomy enthusiasts, and hobbyists.
 
----
-
-## 📖 Overview
-
-**Planet Tracker** is a Python desktop application that simulates and visualizes the solar system in real time.  
-- Computes planetary and lunar positions using NASA/JPL DE421 ephemeris via [Skyfield](https://rhodesmill.org/skyfield/).  
-- Renders interactive 3D plots with [Plotly](https://plotly.com/python/).  
-- Provides a Tkinter-based GUI for time controls, orbit visualization, and AI‑assisted queries (via Groq).  
-- Fetches planetary metadata from the OpenData Solar System API with caching and fallbacks.
 
 ---
 
 ## 🚀 Features
 
-- **3D Visualization**  
-  - Sun, Mercury…Neptune, and Moon, with color‑coded markers, labels, and orbits.  
-- **Accurate Ephemeris Calculations**  
-  - On‑the‑fly position computations for any date/time within 1900–2050.  
-- **Orbit Path Generator**  
-  - Plot full heliocentric trajectories over a user‑defined date range.  
-- **Time Controls**  
-  - Slider for stepping through time, real‑time mode, and animation export (HTML).  
-- **Event Detection**  
-  - Automatic search for upcoming conjunctions and oppositions.  
-- **Planet Info Panel**  
-  - Mass, radius, orbital period, gravity, average temperature, etc., fetched & cached.  
-- **AI Assistant (Optional)**  
-  - Chat interface powered by Groq LLM to answer questions about planets or app usage.  
-- **Customization & Export**  
-  - Light/dark themes, planet color picker, save/load settings (JSON), export plot (HTML) and data (CSV).  
-- **Robust Logging & Error Handling**  
-  - Detailed logs, graceful fallbacks for missing dependencies or network issues.
+- 🎯 **Accurate Ephemeris Calculations**  
+  Uses NASA JPL’s DE421 ephemeris (via Skyfield) to compute precise heliocentric positions.
+
+- 🪐 **3D Orbit Visualization**  
+  Interactive 3D plots of planets and their orbits using Plotly. Includes zoom, pan, rotation, and hover tooltips.
+
+- 📅 **Date & Time Control**  
+  Navigate through past or future positions using a date slider or manually defined time range.
+
+- 🛰️ **Event Detection**  
+  Automatically find upcoming oppositions, conjunctions, and key astronomical alignments.
+
+- 💬 **AI Assistant (Optional)**  
+  Integrated chat assistant powered by Groq LLM to answer astronomy-related queries.
+
+- 🎨 **Customization**  
+  Change themes (dark/light), assign custom colors to planets, and control view angles.
+
+- 📤 **Export Options**  
+  Save the generated orbit plots as standalone HTML or export planetary data as CSV.
+
+- 🧠 **Offline Planet Metadata**  
+  Fetches planetary characteristics from OpenData API and caches locally for offline use.
 
 ---
 
-## 🛠️ Prerequisites
+## 🛠️ Technologies Used
 
-- **Python 3.8+**  
-- Required Python packages (see **Installation**).  
-- **Ephemeris file**: `de421.bsp` (download from NASA/JPL).  
-- (Optional) **Groq API Key** for AI assistant.
+- **Python 3.x**
+- **Tkinter** – GUI framework
+- **Skyfield** – Ephemeris-based astronomical calculations
+- **Plotly** – 3D visualization
+- **Requests** – API integration
+- **Groq (optional)** – AI chat assistant integration
 
 ---
 
-## ⚙️ Installation
+## 📦 Installation
 
-1. **Clone the repository**  
+1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/planet-tracker.git
+   git clone https://github.com/your-username/planet-tracker.git
    cd planet-tracker
-````
+   ```
 
-2. **Install dependencies**
+2. **Create and activate a virtual environment** (optional but recommended)
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Linux/Mac
+   venv\Scripts\activate     # On Windows
+   ```
 
+3. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-   > **`requirements.txt`** should include:
-   >
-   > ```
-   > skyfield
-   > plotly
-   > requests
-   > groq           # if using AI assistant
-   > ```
-   >
-   > *(Tkinter is included with most Python distributions.)*
-
-3. **Download Ephemeris**
-   Place `de421.bsp` in the project root (same folder as `main.py`).
-
-4. **(Optional) Configure Groq API Key**
-
-   ```bash
-   export GROQ_API_KEY="your_groq_api_key_here"
+4. **Download Ephemeris File**
+   Ensure `de421.bsp` is placed in the root directory:
+   ```python
+   from skyfield.api import load
+   load('de421.bsp')
    ```
+   Or download manually from:  
+   [https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/](https://naif.jpl.nasa.gov/pub/naif/generic_kernels/spk/planets/)
 
-   Or set in your environment so the app can enable AI chat features.
+5. **(Optional) Set Groq API Key for AI Assistant**
+   ```bash
+   export GROQ_API_KEY="your-api-key"     # Linux/Mac
+   set GROQ_API_KEY="your-api-key"        # Windows
+   ```
 
 ---
 
-## ▶️ Usage
-
-Run the main application script:
+## ▶️ Running the Application
 
 ```bash
 python main.py
 ```
 
-* **Left Panel**
+Upon launching:
 
-  * Select/deselect celestial bodies
-  * Pick marker colors
-
-* **Right Panel** (Tabs)
-
-  1. **Time & Orbits**
-
-     * Enter start/end dates (YYYY‑MM‑DD)
-     * Click **“Update Plot”** to generate 3D view or **“Animate”** for time‑lapse
-  2. **View & Animation**
-
-     * Adjust zoom, camera elevation & azimuth
-     * Toggle real‑time mode or manual slider
-     * Export HTML animation
-  3. **Settings & Export**
-
-     * Switch light/dark theme
-     * Save/load app settings (JSON)
-     * Export orbit data (CSV)
-  4. **Info & Events**
-
-     * View planet metadata
-     * Search upcoming conjunctions/oppositions
-     * Chat with AI assistant (if enabled)
+- Select celestial bodies from the left panel
+- Choose orbit date range and viewing settings
+- Click "Update Plot" to generate a 3D visualization
+- Access planetary info and upcoming events from the Info tab
+- Use the chat box to ask astronomy questions (if AI is enabled)
 
 ---
 
-## 🗂️ Project Structure
+## 📂 Project Structure
 
 ```
 planet-tracker/
-├── de421.bsp                   # JPL ephemeris file
-├── main.py                     # Application entry point & GUI
-├── planet_calculations.py      # Skyfield ephemeris & orbit math
-├── planet_data.py              # Fetch/cache Solar System metadata
-├── planet_plot.py              # Plotly 3D plotting & animation
-├── requirements.txt            # Python dependencies
-└── README.md                   # This documentation
+├── main.py                   # GUI entry point
+├── planet_calculations.py   # Orbit & event computations using Skyfield
+├── planet_data.py           # Fetch & cache metadata from OpenData API
+├── planet_plot.py           # 3D plotting logic using Plotly
+├── de421.bsp                # JPL Ephemeris file (download separately)
+├── requirements.txt         # Required Python libraries
+├── README.md                # This file
+└── exports/                 # Folder for generated plots and CSVs
 ```
 
 ---
 
-## 📝 Configuration
+## ⚙️ Configuration Tips
 
-| Variable            | Description                                    | Default / Example        |
-| ------------------- | ---------------------------------------------- | ------------------------ |
-| `GROQ_API_KEY`      | API key for Groq LLM chat assistant            | *(not set)*              |
-| `LOG_LEVEL`         | Logging verbosity (`DEBUG`, `INFO`, `WARNING`) | `INFO`                   |
-| `planet_data_cache` | JSON file name for caching API metadata        | `planet_data_cache.json` |
-
----
-
-## 🛡️ Troubleshooting
-
-* **Missing ephemeris file**
-  The app will exit with an error if `de421.bsp` is not found.
-* **Network/API failures**
-  Fallback data is used if the OpenData API is unavailable.
-* **Groq import or key issues**
-  Chat assistant is disabled if the `groq` package/key is missing.
-
-Logs are written to the console—adjust `LOG_LEVEL` for more detail.
+- **Change theme:** via the Settings tab (light/dark)
+- **Adjust camera:** modify zoom, elevation, azimuth
+- **Save settings:** export and import user preferences via JSON
+- **Logging:** enabled by default (`LOG_LEVEL=INFO`), changeable via environment variable
 
 ---
 
-## 🎓 Educational Value
+## 🧪 Example Use Cases
 
-Planet Tracker combines scientific accuracy with engaging visualization. It’s ideal for:
-
-* Astronomy students learning celestial mechanics
-* Educators demonstrating orbital dynamics
-* Hobbyists planning observation sessions
-* Developers exploring ephemeris computations and 3D plotting
+- Visualize the position of planets on your birthday
+- Detect next Mars–Sun opposition for observation planning
+- Export planetary orbits for school/college presentations
+- Ask "What is Jupiter’s gravity?" in the chat window
 
 ---
 
-## 📄 License
+## 💡 Contributions
 
-This project is released under the MIT License. See `LICENSE` for details.
+Contributions are welcome!
+
+1. Fork the repo
+2. Create a new branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -m "Add feature"`
+4. Push and open a Pull Request
 
 ---
 
-*Happy stargazing!* 🌌
 
-```
-```
+## 🙌 Acknowledgements
+
+- JPL / NASA for the DE421 Ephemeris
+- Skyfield Team for the astronomical computation library
+- Plotly for 3D visualization tools
+- [Le Systeme Solaire API](https://api.le-systeme-solaire.net/) for planetary data
+- Groq for LLM integration
+
+---
+
+## 🌠 Happy Exploring!
+
