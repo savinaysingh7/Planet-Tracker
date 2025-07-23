@@ -1858,6 +1858,13 @@ class PlanetTrackerApp:
 
 # --- Main Execution ---
 if __name__ == "__main__":
+    # Check if running in a headless environment
+    if os.environ.get('DEBIAN_FRONTEND') == 'noninteractive':
+        logger.info("Running in non-interactive mode. GUI will not be launched.")
+        # Potentially run a non-GUI version of the app here if one exists
+        # For now, just exit gracefully.
+        sys.exit(0)
+
     try:
         # Initialize Tkinter root BEFORE creating the app instance
         main_root = tk.Tk()
@@ -1876,6 +1883,15 @@ if __name__ == "__main__":
          print(f"\nApplication Exit: {e}", file=sys.stderr)
          # No need for message box here, it should have been shown during init failure handling
          sys.exit(1) # Indicate error exit code
+    except tk.TclError as e:
+        if "no display name" in str(e):
+            logger.error("Failed to start GUI: No display available (headless environment).")
+            print("Error: Cannot start the application in a headless environment.", file=sys.stderr)
+            sys.exit(1)
+        else:
+            # Handle other TclErrors
+            logger.critical(f"Unhandled TclError during application startup: {e}", exc_info=True)
+            sys.exit(f"Application terminated due to TclError: {e}")
     except Exception as e:
         # Catch any other unexpected critical errors during app creation or mainloop startup
         import traceback
